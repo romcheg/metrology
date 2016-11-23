@@ -1,3 +1,4 @@
+import errno
 import re
 import socket
 import pickle
@@ -32,20 +33,42 @@ class GraphiteReporter(Reporter):
             self.batch_size = 1
         super(GraphiteReporter, self).__init__(**options)
         self.batch_count = 0
+
         if self.pickle:
             self._buffered_send_metric = self._buffered_pickle_send_metric
-            self._send = self._send_pickle
             self.batch_buffer = []
         else:
             self._buffered_send_metric = self._buffered_plaintext_send_metric
-            self._send = self._send_plaintext
             self.batch_buffer = ""
+
+    def _send(self):
+        send_func = self._send_pickle if self.pickle else self._send_plaintext
+
+        try:
+            send_func()
+        except OSError as e:
+            if e.errno in {errno.EPIPE, errno.ETIMEDOUT, errno.EBADF}:
+                self._establish_connection()
+            else:
+                raise
+
+    def _establish_connection(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        if self.keepalive:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, after_idle_sec)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, interval_sec)
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, max_fails)
+
+        sock.connect((self.host, self.port))
+        self._socket = sock
 
     @property
     def socket(self):
         if not hasattr(self, '_socket'):
-            self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._socket.connect((self.host, self.port))
+            self._establish_connection()
+
         return self._socket
 
     def write(self):
