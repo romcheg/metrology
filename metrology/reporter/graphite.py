@@ -29,6 +29,9 @@ class GraphiteReporter(Reporter):
         self.prefix = options.get('prefix')
         self.pickle = options.get('pickle', False)
         self.batch_size = options.get('batch_size', 100)
+
+        self.keepalive = options.get('keepalive', True)
+
         if self.batch_size <= 0:
             self.batch_size = 1
         super(GraphiteReporter, self).__init__(**options)
