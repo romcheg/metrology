@@ -31,6 +31,9 @@ class GraphiteReporter(Reporter):
         self.batch_size = options.get('batch_size', 100)
 
         self.keepalive = options.get('keepalive', True)
+        self.keepalive_idle = options.get('keepalive_idle', 600)
+        self.keepalive_interval = options.get('keepalive_interval', 60)
+        self.keepalive_max_fails = options.get('keepalive_max_fails', 20)
 
         if self.batch_size <= 0:
             self.batch_size = 1
@@ -60,9 +63,15 @@ class GraphiteReporter(Reporter):
 
         if self.keepalive:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, after_idle_sec)
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, interval_sec)
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, max_fails)
+            sock.setsockopt(socket.IPPROTO_TCP,
+                            socket.TCP_KEEPIDLE,
+                            self.keepalive_idle)
+            sock.setsockopt(socket.IPPROTO_TCP,
+                            socket.TCP_KEEPINTVL,
+                            self.keepalive_interval)
+            sock.setsockopt(socket.IPPROTO_TCP,
+                            socket.TCP_KEEPCNT,
+                            self.keepalive_max_fails)
 
         sock.connect((self.host, self.port))
         self._socket = sock
