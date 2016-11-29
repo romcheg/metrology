@@ -27,7 +27,7 @@ class StatsDReporterTest(TestCase):
         Metrology.histogram('histogram').update(5)
         self.reporter.write()
         self.assertTrue(mock.sendall.called)
-        self.assertEqual(6, len(mock.sendall.call_args_list))
+        self.assertEqual(60, len(mock.sendall.call_args_list))
         self.reporter.stop()
 
     @patch.object(StatsDReporter, 'socket')
@@ -42,7 +42,7 @@ class StatsDReporterTest(TestCase):
         Metrology.histogram('histogram').update(5)
         self.reporter.write()
         self.assertTrue(mock.sendall.called)
-        self.assertEqual(3, len(mock.sendall.call_args_list))
+        self.assertEqual(30, len(mock.sendall.call_args_list))
         self.reporter.stop()
 
     @patch.object(StatsDReporter, 'socket')
@@ -57,7 +57,7 @@ class StatsDReporterTest(TestCase):
         Metrology.histogram('histogram').update(5)
         self.reporter.write()
         self.assertTrue(mock.sendto.called)
-        self.assertEqual(6, len(mock.sendto.call_args_list))
+        self.assertEqual(60, len(mock.sendto.call_args_list))
         self.reporter.stop()
 
     @patch.object(StatsDReporter, 'socket')
@@ -72,5 +72,5 @@ class StatsDReporterTest(TestCase):
         Metrology.histogram('histogram').update(5)
         self.reporter.write()
         self.assertTrue(mock.sendto.called)
-        self.assertEqual(3, len(mock.sendto.call_args_list))
+        self.assertEqual(30, len(mock.sendto.call_args_list))
         self.reporter.stop()
