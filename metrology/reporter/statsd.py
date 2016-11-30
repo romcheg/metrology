@@ -68,17 +68,17 @@ class StatsDReporter(Reporter):
             if isinstance(metric, UtilizationTimer):
                 send(mtype='timer',
                      keys=['count', 'one_minute_rate', 'five_minute_rate',
-                          'fifteen_minute_rate', 'mean_rate', 'min', 'max',
-                          'mean', 'stddev', 'one_minute_utilization',
-                          'five_minute_utilization',
-                          'fifteen_minute_utilization', 'mean_utilization'],
+                           'fifteen_minute_rate', 'mean_rate', 'min', 'max',
+                           'mean', 'stddev', 'one_minute_utilization',
+                           'five_minute_utilization',
+                           'fifteen_minute_utilization', 'mean_utilization'],
                      snapshot_keys=['median', 'percentile_95th',
                                     'percentile_99th', 'percentile_999th'])
             if isinstance(metric, Timer):
                 send(mtype='timer',
                      keys=['count', 'total_time', 'one_minute_rate',
-                          'five_minute_rate', 'fifteen_minute_rate',
-                          'mean_rate', 'min', 'max', 'mean', 'stddev'],
+                           'five_minute_rate', 'fifteen_minute_rate',
+                           'mean_rate', 'min', 'max', 'mean', 'stddev'],
                      snapshot_keys=['median', 'percentile_95th',
                                     'percentile_99th', 'percentile_999th'])
             if isinstance(metric, Counter):
@@ -91,26 +91,29 @@ class StatsDReporter(Reporter):
 
         self._send()
 
-    def send_metric(self, name, mtype, metric, keys, snapshot_keys=[]):
-        base_name = re.sub(r"\s+", "_", name)
+    def send_metric(self, name, mtype, metric, keys, snapshot_keys=None):
+        snapshot_keys = snapshot_keys or []
+
         if self.prefix:
-            base_name = "{0}.{1}".format(self.prefix, base_name)
+            name = "{0}.{1}".format(self.prefix, name)
 
         for name in keys:
             value = getattr(metric, name)
-            self._buffered_send_metric(base_name, name, value, datetime.now())
+            self._buffered_send_metric(name, mtype, value)
 
         if hasattr(metric, 'snapshot'):
             for name in snapshot_keys:
                 value = getattr(metric.snapshot, name)
-                self._buffered_send_metric(base_name, name, value,
-                                           datetime.now())
+                self._buffered_send_metric(name, mtype, value)
 
-    def _buffered_send_metric(self, base_name, name, value, time):
+    def _buffered_send_metric(self, name, mtype, value):
         self.batch_count += 1
-        self.batch_buffer += "{0}.{1} {2} {3}{4}".format(base_name, name,
-                                                         value, time,
-                                                         os.linesep)
+
+        m_type = self.translate_dict.get(mtype) or 'g'
+        metric =  '{0}:{1}|{2}\n'.format(name, value, mtype)
+
+        self.batch_buffer += metric
+
         # Check if we reach batch size and send
         if self.batch_count >= self.batch_size:
             self._send()
@@ -128,9 +131,11 @@ class StatsDReporter(Reporter):
     def _send_udp(self):
         if len(self.batch_buffer):
             if sys.version_info[0] > 2:
-                self.socket.sendto(self.batch_buffer, (self.host, self.port))
+                self.socket.sendto(bytes(self.batch_buffer, 'ascii'),
+                                   (self.host, self.port))
             else:
-                self.socket.sendto(self.batch_buffer, (self.host, self.port))
+                self.socket.sendto(self.batch_buffer,
+                                   (self.host, self.port))
 
             self.batch_count = 0
             self.batch_buffer = ''
