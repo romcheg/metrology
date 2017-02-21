@@ -17,6 +17,15 @@ def class_name(obj):
     return obj.__name__ if isinstance(obj, type) else type(obj).__name__
 
 
+def mmap(func, iterable):
+    """Wrapper to make map() behave the same on Py2 and Py3."""
+
+    if sys.version_info[0] > 2:
+        return [i for i in map(func, iterable)]
+    else:
+        return map(func, iterable)
+
+
 # NOTE(romcheg): This dictionary maps metric types to specific configuration
 #                of the metric serializer.
 #                Format:
@@ -119,7 +128,8 @@ class StatsDReporter(Reporter):
     def socket(self):
         if not self._socket:
             if self.conn_type == 'tcp':
-                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket = socket.socket(socket.AF_INET,
+                                             socket.SOCK_STREAM)
                 self._socket.connect((self.host, self.port))
             else:
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -135,10 +145,9 @@ class StatsDReporter(Reporter):
 
     def send_metric(self, name, metric):
         """Send metric and its snapshot."""
-
         config = SERIALIZER_CONFIG[class_name(metric)]
 
-        map(
+        mmap(
             self._buffered_send_metric,
             self.serialize_metric(
                 metric,
@@ -149,7 +158,7 @@ class StatsDReporter(Reporter):
         )
 
         if hasattr(metric, 'snapshot') and config.get('snapshot_keys'):
-            map(
+            mmap(
                 self._buffered_send_metric,
                 self.serialize_metric(
                     metric.snapshot,
